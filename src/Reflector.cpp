@@ -90,17 +90,9 @@ Reflector::Reflector( const config::Values& choices, asio::io_context& io_contex
         assert( colon < endQuote );
         const std::string system( sMessage.substr( colon + 2, endQuote - 1 - colon - 1 ) );
         assert( 12 == system.length() );
-        const std::string keepalive( "R/" + system + "/keepalive" );
-
-        boost::asio::post(
-          m_io_context,
-          [this,keepalive](){
-            m_pMqttIn->Publish(
-              keepalive, "",
-              []( bool b, int i ){
-                std::cout << "result1 " << b << ',' << i << std::endl;
-              } );
-          } );
+        const std::string keepalive_topic( "R/" + system + "/keepalive" );
+        const std::string keepalive_msg( "{\"keepalive-options\":[\"suppress-republish\"]}" );
+        const std::string settings( "R/" + system + "/settings/0/Settings" );
 
         boost::asio::post(
           m_io_context,
@@ -120,6 +112,28 @@ Reflector::Reflector( const config::Values& choices, asio::io_context& io_contex
                       } );
                   }
                 );
+              } );
+          } );
+
+        // re-enable once apparation script udated
+        //boost::asio::post(
+        //  m_io_context,
+        //  [this,settings](){
+        //    m_pMqttIn->Publish(
+        //      settings, "",
+        //      []( bool b, int i ){
+        //        //std::cout << "result1 " << b << ',' << i << std::endl;
+        //      } );
+        //  } );
+
+        // post subsequent keepalive messages with keepalive_msg in an interval less than 60 seconds
+        boost::asio::post(
+          m_io_context,
+          [this,keepalive_topic](){
+            m_pMqttIn->Publish(
+              keepalive_topic, "",
+              []( bool b, int i ){
+                //std::cout << "result1 " << b << ',' << i << std::endl;
               } );
           } );
 
