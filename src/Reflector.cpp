@@ -99,23 +99,33 @@ Reflector::Reflector( const config::Values& choices, asio::io_context& io_contex
           [this](){
             m_pMqttIn->Subscribe(
               m_choices.mqtt_in.sTopic,
-              [this]( const std::string_view& sTopic, const std::string_view& sMessage ){
-                const std::string topic( m_choices.mqtt_out.sTopic + '/' + std::string( sTopic ) );
-                const std::string message( sMessage );
-                boost::asio::post(
-                  m_io_context,
-                  [this, topic, message](){
-                    m_pMqttOut->Publish(
-                      topic, message,
-                      []( bool b, int i ){
-                        //std::cout << "result2 " << b << ',' << i << std::endl;
-                      } );
-                  }
-                );
+              [this]( const std::string_view& svTopic, const std::string_view& svMessage ){
+                try {
+                  const std::string sTopic( m_choices.mqtt_out.sTopic + '/' + std::string( svTopic ) );
+                  const std::string sMessage( svMessage );
+                  boost::asio::post(
+                    m_io_context,
+                    [this, sTopic, sMessage](){
+                      try {
+                        m_pMqttOut->Publish(
+                          sTopic, sMessage,
+                          []( bool b, int i ){
+                            //std::cout << "result2 " << b << ',' << i << std::endl;
+                          } );
+                      }
+                      catch (...) {
+                        BOOST_LOG_TRIVIAL(error) << "exception #1 " << sTopic << ':' << sMessage;
+                      }
+                    }
+                  );
+                }
+                catch (...) {
+                  BOOST_LOG_TRIVIAL(error) << "exception #2 " << svTopic << ':' << svMessage;
+                }
               } );
           } );
 
-        // re-enable once apparation script udated
+        // re-enable once apparation script updated, may not need this, first keepalive generates this
         //boost::asio::post(
         //  m_io_context,
         //  [this,settings](){
