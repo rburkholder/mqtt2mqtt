@@ -1,3 +1,8 @@
+intro:
+* currently a generic reflector
+* will probably evolve to be victron centric due to particular messages
+* will probably deprecate once apparition can handle multiple mqtt brokers
+
 to build:
 
     # pre-requisites:
@@ -28,3 +33,9 @@ mqtt2mqtt.cfg file:
     mqtt_out_username = <username>
     mqtt_out_password = <password>
     mqtt_out_topic = <topic prefix>  # no trailing slash
+    
+Todo:
+* implement the victron keepalive and settings messages
+* the application can then run without victron's portal also operating
+* keepalive needs to be posted with 'suppress-republish' once a minute
+  * probably each 50 or 55 minutes to preven the 60 second expiry
