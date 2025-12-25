@@ -1,4 +1,23 @@
-mqtt2mqtt.cfg file
+to build:
+
+    # pre-requisites:
+    #  boost from git@github.com:rburkholder/libs-build.git
+    #  git@github.com:rburkholder/repertory.git
+
+    git clone git@github.com:rburkholder/mqtt2mqtt.git
+    cd mqtt2mqtt
+    mkdir build
+    cd build
+    cmake ..
+    cd ..
+
+    # compose a mqtt2mqtt.cfg as below
+    # then run:
+
+    build/src/mqtt2mqtt
+
+
+mqtt2mqtt.cfg file:
 
     mqtt_in_id = <unique id>
     mqtt_in_host = <hostname/ip address>
