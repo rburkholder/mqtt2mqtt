@@ -19,8 +19,8 @@
  * Created: 2025/12/11 21:10:03
  */
 
-#include <unistd.h>
-#include <limits.h>
+//#include <unistd.h>
+//#include <limits.h>
 
 #include <iostream>
 
@@ -30,16 +30,24 @@
 
 #include <ou/mqtt/mqtt.hpp>
 
-#include "Reflector.hpp"
 #include "Config.hpp"
+#include "Reflector.hpp"
 
 // TODO:
 //   accept 'set' for writes
 //   accept 'get' for refresh, specific key for single value
 //   track changes and emit delta
 
+namespace {
+  static const int c_keepalive_seconds( 55 );
+  static const std::string c_keepalive_start(   "{\"keepalive-options\":[{\"full-publish-completed-echo\":\"mqtt2mqtt\"}]}" );
+  static const std::string c_keepalive_refresh( "{\"keepalive-options\":[\"suppress-republish\"]}" );
+  static const std::string c_SystemTopic( "N/+/system/+/Serial" );
+}
+
 Reflector::Reflector( const config::Values& choices, asio::io_context& io_context )
 : m_choices( choices ), m_io_context( io_context )
+, m_timerKeepAlive( io_context )
 , m_signals( io_context, SIGINT ) // SIGINT is called '^C'
 {
 /*
@@ -69,31 +77,28 @@ Reflector::Reflector( const config::Values& choices, asio::io_context& io_contex
     Signals( error_code, signal_number );
   } );
 
-  static const std::string SystemTopic( "N/+/system/+/Serial" );
-
   try {
     m_pMqttOut = std::make_unique<ou::Mqtt>( choices.mqtt_out, choices.mqtt_out.sId );
     m_pMqttIn = std::make_unique<ou::Mqtt>( choices.mqtt_in, choices.mqtt_in.sId );
-    m_pMqttIn->Subscribe(
-      SystemTopic,
-      [this]( const std::string_view& sTopic, const std::string_view& sMessage ){
+    m_pMqttIn->Subscribe( // subscribe to obtain the system serial number
+      c_SystemTopic,
+      [this]( const std::string_view& sTopic, const std::string_view& svMessage ){
 
-        boost::asio::post(
+        boost::asio::post(  // unsubscribe from one-time serial number response
           m_io_context,
           [this](){
-            m_pMqttIn->UnSubscribe( SystemTopic );
+            m_pMqttIn->UnSubscribe( c_SystemTopic );
           } );
 
-        const std::string message( sMessage );
-        const auto colon( sMessage.find_first_of( ':') );
-        const auto endQuote( sMessage.find_last_of( '"' ) );
+        // can regex be run on string_view?
+        const auto colon( svMessage.find_first_of( ':') );
+        const auto endQuote( svMessage.find_last_of( '"' ) );
         assert( colon < endQuote );
-        const std::string system( sMessage.substr( colon + 2, endQuote - 1 - colon - 1 ) );
-        assert( 12 == system.length() );
-        const std::string keepalive_topic( "R/" + system + "/keepalive" );
-        const std::string keepalive_msg( "{\"keepalive-options\":[\"suppress-republish\"]}" );
-        const std::string settings( "R/" + system + "/settings/0/Settings" );
+        m_sSystemSerialNumber = svMessage.substr( colon + 2, endQuote - 1 - colon - 1 );
+        assert( 12 == m_sSystemSerialNumber.length() );
+        BOOST_LOG_TRIVIAL(info) << "serial = " << m_sSystemSerialNumber;
 
+        // start receiving messages
         boost::asio::post(
           m_io_context,
           [this](){
@@ -125,6 +130,15 @@ Reflector::Reflector( const config::Values& choices, asio::io_context& io_contex
               } );
           } );
 
+      } );
+  }
+  catch ( const ou::Mqtt::runtime_error& e ) {
+    BOOST_LOG_TRIVIAL(error) << "mqtt error: " << e.what() << '(' << e.rc << ')';
+    throw e;
+  }
+
+  //const std::string settings( "R/" + m_sSystemSerialNumber + "/settings/0/Settings" );
+
         // re-enable once apparation script updated, may not need this, first keepalive generates this
         //boost::asio::post(
         //  m_io_context,
@@ -136,23 +150,39 @@ Reflector::Reflector( const config::Values& choices, asio::io_context& io_contex
         //      } );
         //  } );
 
-        // post subsequent keepalive messages with keepalive_msg in an interval less than 60 seconds
+  // see https://github.com/victronenergy/dbus-flashmq for keepalive info
+  m_sKeepAlive_Topic = ( "R/" + m_sSystemSerialNumber + "/keepalive" );
+
+  // post first keepalive message for refresh
+  boost::asio::post(
+    m_io_context,
+    [this](){
+      m_pMqttIn->Publish(
+        m_sKeepAlive_Topic, c_keepalive_start,
+        []( bool b, int i ){
+          //BOOST_LOG_TRIVIAL(trace) << "keepalive start b=" << b << ",i=" << i;
+        } );
+    } );
+
+  m_fKeepAlive =
+    [this]( const boost::system::error_code& ec ){
+      if ( 0 == ec.value() ) {
         boost::asio::post(
           m_io_context,
-          [this,keepalive_topic](){
+          [this](){
             m_pMqttIn->Publish(
-              keepalive_topic, "",
+              m_sKeepAlive_Topic, c_keepalive_refresh,
               []( bool b, int i ){
-                //std::cout << "result1 " << b << ',' << i << std::endl;
+                //BOOST_LOG_TRIVIAL(trace) << "keepalive refresh b=" << b << ",i=" << i;
               } );
           } );
+        m_timerKeepAlive.expires_after( boost::asio::chrono::seconds( c_keepalive_seconds ) );
+        m_timerKeepAlive.async_wait( m_fKeepAlive );
+      }
+    };
 
-      } );
-  }
-  catch ( const ou::Mqtt::runtime_error& e ) {
-    BOOST_LOG_TRIVIAL(error) << "mqtt error: " << e.what() << '(' << e.rc << ')';
-    throw e;
-  }
+  m_timerKeepAlive.expires_after( boost::asio::chrono::seconds( c_keepalive_seconds ) );
+  m_timerKeepAlive.async_wait( m_fKeepAlive );
 
   std::cout << "ctrl-c to end" << std::endl;
 
@@ -211,6 +241,18 @@ void Reflector::Signals( const boost::system::error_code& error_code, int signal
 }
 
 Reflector::~Reflector() {
+
+  m_timerKeepAlive.cancel();
+
+  boost::asio::post(  // unsubscribe from onetime serial number response
+    m_io_context,
+    [this](){
+      m_pMqttIn->UnSubscribe( m_choices.mqtt_in.sTopic );
+    } );
+
+  m_signals.clear();
+  m_signals.cancel();
+
   m_pWorkGuard.reset();
   m_pMqttIn.reset();
   m_pMqttOut.reset();

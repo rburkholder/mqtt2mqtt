@@ -23,7 +23,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
-//#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/executor_work_guard.hpp>
 
 namespace config {
@@ -56,6 +56,16 @@ private:
 
   asio::signal_set m_signals;
 
+  std::string m_sSystemSerialNumber;
+
+  boost::asio::steady_timer m_timerKeepAlive;
+
+  std::string m_sKeepAlive_Topic;
+
+  using fKeepAlive_t = std::function<void( const boost::system::error_code& )>;
+  fKeepAlive_t m_fKeepAlive;
+
+  //void KeepAlive( const boost::system::error_code& );
   void Signals( const boost::system::error_code&, int );
 
 };
