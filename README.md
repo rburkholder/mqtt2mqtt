@@ -37,3 +37,8 @@ mqtt2mqtt.cfg file:
     mqtt_out_username = <username>
     mqtt_out_password = <password>
     mqtt_out_topic = <topic prefix>  # no trailing slash
+
+
+Additional Resources:
+* [dbus-mqtt-flashmq-plugin](https://github.com/victronenergy/dbus-flashmq) - Plugin for FlashMQ that interfaces between DBUS and MQTT. Background on the Cerbo / Venus OS MQTT broker, methods of access, and keepalive/refresh methods.
+
