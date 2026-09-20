@@ -1,6 +1,8 @@
 # mqtt2mqtt/src
 cmake_minimum_required (VERSION 3.13)
 
+cmake_policy(SET CMP0167 NEW)
+
 PROJECT(mqtt2mqtt)
 
 # https://cmake.org/cmake/help/v3.6/module/FindBoost.html
