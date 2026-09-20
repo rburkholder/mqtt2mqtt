@@ -10,21 +10,21 @@
 
 To build:
 ```bash
-    # pre-requisites:
-    #  boost from git@github.com:rburkholder/libs-build.git
-    #  git@github.com:rburkholder/repertory.git
+# pre-requisites:
+#  boost from git@github.com:rburkholder/libs-build.git
+#  git@github.com:rburkholder/repertory.git
 
-    git clone git@github.com:rburkholder/mqtt2mqtt.git
-    cd mqtt2mqtt
-    mkdir build
-    cd build
-    cmake ..
-    cd ..
+git clone git@github.com:rburkholder/mqtt2mqtt.git
+cd mqtt2mqtt
+mkdir build
+cd build
+cmake ..
+cd ..
 
-    # compose a mqtt2mqtt.cfg as below
-    # then run:
+# compose a mqtt2mqtt.cfg as below
+# then run:
 
-    build/src/mqtt2mqtt
+build/src/mqtt2mqtt
 ```
 mqtt2mqtt.cfg file:
 
