@@ -19,6 +19,7 @@ cd mqtt2mqtt
 mkdir build
 cd build
 cmake ..
+make
 cd ..
 
 # compose a mqtt2mqtt.cfg as below
