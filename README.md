@@ -9,7 +9,7 @@
 * CerboGX Modbus TCP Server is not required
 
 To build:
-
+```bash
     # pre-requisites:
     #  boost from git@github.com:rburkholder/libs-build.git
     #  git@github.com:rburkholder/repertory.git
@@ -25,7 +25,7 @@ To build:
     # then run:
 
     build/src/mqtt2mqtt
-
+```
 mqtt2mqtt.cfg file:
 
     mqtt_in_id = <unique id>
